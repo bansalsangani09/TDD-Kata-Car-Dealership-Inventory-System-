@@ -1,31 +1,37 @@
 const request = require("supertest");
 const app = require("../app");
-const User = require("../models/User");
-const Vehicle = require("../models/Vehicle");
+const prisma = require("../config/db");
 const generateToken = require("../utils/generateToken");
+const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 
 describe("POST /api/vehicles", () => {
   let adminToken;
   let userToken;
 
   beforeEach(async () => {
+    const hashedPassword = await bcrypt.hash("password123", 10);
     // Create an Admin user
-    const admin = await User.create({
-      name: "Admin User",
-      email: "admin.vehicle@example.com",
-      password: "password123",
-      role: "ADMIN",
+    const admin = await prisma.user.create({
+      data: {
+        name: "Admin User",
+        email: "admin.vehicle@example.com",
+        password: hashedPassword,
+        role: "ADMIN",
+      }
     });
-    adminToken = `Bearer ${generateToken(admin._id.toString())}`;
+    adminToken = `Bearer ${generateToken(admin.id)}`;
 
     // Create a regular User
-    const user = await User.create({
-      name: "Regular User",
-      email: "user.vehicle@example.com",
-      password: "password123",
-      role: "USER",
+    const user = await prisma.user.create({
+      data: {
+        name: "Regular User",
+        email: "user.vehicle@example.com",
+        password: hashedPassword,
+        role: "USER",
+      }
     });
-    userToken = `Bearer ${generateToken(user._id.toString())}`;
+    userToken = `Bearer ${generateToken(user.id)}`;
   });
 
   const validVehicle = {
@@ -82,7 +88,6 @@ describe("POST /api/vehicles", () => {
       .send({
         make: "Toyota",
         model: "Camry",
-        // category, price, quantity missing
       });
 
     expect(res.statusCode).toBe(400);
@@ -135,21 +140,26 @@ describe("GET /api/vehicles & /api/vehicles/search", () => {
   let userToken;
 
   beforeEach(async () => {
+    const hashedPassword = await bcrypt.hash("password123", 10);
     // Create a regular user for queries
-    const user = await User.create({
-      name: "Reader User",
-      email: "reader@example.com",
-      password: "password123",
-      role: "USER",
+    const user = await prisma.user.create({
+      data: {
+        name: "Reader User",
+        email: "reader@example.com",
+        password: hashedPassword,
+        role: "USER",
+      }
     });
-    userToken = `Bearer ${generateToken(user._id.toString())}`;
+    userToken = `Bearer ${generateToken(user.id)}`;
 
     // Seed test vehicles
-    await Vehicle.create([
-      { make: "Toyota", model: "Camry", category: "Sedan", price: 25000, quantity: 5 },
-      { make: "Honda", model: "Civic", category: "Sedan", price: 22000, quantity: 8 },
-      { make: "Ford", model: "Explorer", category: "SUV", price: 35000, quantity: 3 },
-    ]);
+    await prisma.vehicle.createMany({
+      data: [
+        { make: "Toyota", model: "Camry", category: "Sedan", price: 25000, quantity: 5 },
+        { make: "Honda", model: "Civic", category: "Sedan", price: 22000, quantity: 8 },
+        { make: "Ford", model: "Explorer", category: "SUV", price: 35000, quantity: 3 },
+      ]
+    });
   });
 
   // ── GET /api/vehicles ──────────────────────────────────────────────────────
@@ -224,37 +234,44 @@ describe("POST /api/vehicles/:id/purchase", () => {
   let outOfStockVehicle;
 
   beforeEach(async () => {
+    const hashedPassword = await bcrypt.hash("password123", 10);
     // Create a regular user
-    const user = await User.create({
-      name: "Buyer User",
-      email: "buyer@example.com",
-      password: "password123",
-      role: "USER",
+    const user = await prisma.user.create({
+      data: {
+        name: "Buyer User",
+        email: "buyer@example.com",
+        password: hashedPassword,
+        role: "USER",
+      }
     });
-    userToken = `Bearer ${generateToken(user._id.toString())}`;
+    userToken = `Bearer ${generateToken(user.id)}`;
 
     // Seed test vehicles
-    testVehicle = await Vehicle.create({
-      make: "Toyota",
-      model: "Camry",
-      category: "Sedan",
-      price: 25000,
-      quantity: 1, // Will become 0 after one purchase
+    testVehicle = await prisma.vehicle.create({
+      data: {
+        make: "Toyota",
+        model: "Camry",
+        category: "Sedan",
+        price: 25000,
+        quantity: 1,
+      }
     });
 
-    outOfStockVehicle = await Vehicle.create({
-      make: "Honda",
-      model: "Civic",
-      category: "Sedan",
-      price: 22000,
-      quantity: 0,
+    outOfStockVehicle = await prisma.vehicle.create({
+      data: {
+        make: "Honda",
+        model: "Civic",
+        category: "Sedan",
+        price: 22000,
+        quantity: 0,
+      }
     });
   });
 
   // ── Test 1: Purchase successfully (Quantity decreases by one) ──────────────
   test("should purchase a vehicle successfully and decrease quantity by one", async () => {
     const res = await request(app)
-      .post(`/api/vehicles/${testVehicle._id}/purchase`)
+      .post(`/api/vehicles/${testVehicle.id}/purchase`)
       .set("Authorization", userToken);
 
     expect(res.statusCode).toBe(200);
@@ -266,7 +283,7 @@ describe("POST /api/vehicles/:id/purchase", () => {
   // ── Test 2: Cannot purchase when quantity is zero ──────────────────────────
   test("should return 400 when vehicle is out of stock", async () => {
     const res = await request(app)
-      .post(`/api/vehicles/${outOfStockVehicle._id}/purchase`)
+      .post(`/api/vehicles/${outOfStockVehicle.id}/purchase`)
       .set("Authorization", userToken);
 
     expect(res.statusCode).toBe(400);
@@ -277,7 +294,7 @@ describe("POST /api/vehicles/:id/purchase", () => {
   // ── Test 3: JWT required ───────────────────────────────────────────────────
   test("should return 401 when no token is provided", async () => {
     const res = await request(app)
-      .post(`/api/vehicles/${testVehicle._id}/purchase`);
+      .post(`/api/vehicles/${testVehicle.id}/purchase`);
 
     expect(res.statusCode).toBe(401);
     expect(res.body.success).toBe(false);
@@ -285,8 +302,7 @@ describe("POST /api/vehicles/:id/purchase", () => {
 
   // ── Test 4: Handle missing vehicle ─────────────────────────────────────────
   test("should return 404 when vehicle does not exist", async () => {
-    // Generate a valid ObjectId but one that doesn't exist
-    const nonExistentId = new (require("mongoose").Types.ObjectId)();
+    const nonExistentId = crypto.randomUUID();
     const res = await request(app)
       .post(`/api/vehicles/${nonExistentId}/purchase`)
       .set("Authorization", userToken);
@@ -314,38 +330,45 @@ describe("POST /api/vehicles/:id/restock", () => {
   let testVehicle;
 
   beforeEach(async () => {
+    const hashedPassword = await bcrypt.hash("password123", 10);
     // Create an Admin user
-    const admin = await User.create({
-      name: "Admin User",
-      email: "admin.restock@example.com",
-      password: "password123",
-      role: "ADMIN",
+    const admin = await prisma.user.create({
+      data: {
+        name: "Admin User",
+        email: "admin.restock@example.com",
+        password: hashedPassword,
+        role: "ADMIN",
+      }
     });
-    adminToken = `Bearer ${generateToken(admin._id.toString())}`;
+    adminToken = `Bearer ${generateToken(admin.id)}`;
 
     // Create a regular user
-    const user = await User.create({
-      name: "Regular User",
-      email: "user.restock@example.com",
-      password: "password123",
-      role: "USER",
+    const user = await prisma.user.create({
+      data: {
+        name: "Regular User",
+        email: "user.restock@example.com",
+        password: hashedPassword,
+        role: "USER",
+      }
     });
-    userToken = `Bearer ${generateToken(user._id.toString())}`;
+    userToken = `Bearer ${generateToken(user.id)}`;
 
     // Seed test vehicle
-    testVehicle = await Vehicle.create({
-      make: "Toyota",
-      model: "Camry",
-      category: "Sedan",
-      price: 25000,
-      quantity: 5,
+    testVehicle = await prisma.vehicle.create({
+      data: {
+        make: "Toyota",
+        model: "Camry",
+        category: "Sedan",
+        price: 25000,
+        quantity: 5,
+      }
     });
   });
 
   // ── Test 1: Restock successfully (Admin only) ──────────────────────────────
   test("should restock a vehicle successfully and increase quantity by amount", async () => {
     const res = await request(app)
-      .post(`/api/vehicles/${testVehicle._id}/restock`)
+      .post(`/api/vehicles/${testVehicle.id}/restock`)
       .set("Authorization", adminToken)
       .send({ amount: 10 });
 
@@ -358,7 +381,7 @@ describe("POST /api/vehicles/:id/restock", () => {
   // ── Test 2: Non-admin trying to restock ────────────────────────────────────
   test("should return 403 when a non-admin tries to restock", async () => {
     const res = await request(app)
-      .post(`/api/vehicles/${testVehicle._id}/restock`)
+      .post(`/api/vehicles/${testVehicle.id}/restock`)
       .set("Authorization", userToken)
       .send({ amount: 10 });
 
@@ -369,7 +392,7 @@ describe("POST /api/vehicles/:id/restock", () => {
   // ── Test 3: Unauthorized user (no token) ───────────────────────────────────
   test("should return 401 when no token is provided", async () => {
     const res = await request(app)
-      .post(`/api/vehicles/${testVehicle._id}/restock`)
+      .post(`/api/vehicles/${testVehicle.id}/restock`)
       .send({ amount: 10 });
 
     expect(res.statusCode).toBe(401);
@@ -379,7 +402,7 @@ describe("POST /api/vehicles/:id/restock", () => {
   // ── Test 4: Invalid restock amount (missing) ───────────────────────────────
   test("should return 400 when amount is missing", async () => {
     const res = await request(app)
-      .post(`/api/vehicles/${testVehicle._id}/restock`)
+      .post(`/api/vehicles/${testVehicle.id}/restock`)
       .set("Authorization", adminToken)
       .send({});
 
@@ -390,7 +413,7 @@ describe("POST /api/vehicles/:id/restock", () => {
   // ── Test 5: Invalid restock amount (negative) ──────────────────────────────
   test("should return 400 when amount is negative", async () => {
     const res = await request(app)
-      .post(`/api/vehicles/${testVehicle._id}/restock`)
+      .post(`/api/vehicles/${testVehicle.id}/restock`)
       .set("Authorization", adminToken)
       .send({ amount: -5 });
 
@@ -401,7 +424,7 @@ describe("POST /api/vehicles/:id/restock", () => {
   // ── Test 6: Invalid restock amount (non-integer) ───────────────────────────
   test("should return 400 when amount is not an integer", async () => {
     const res = await request(app)
-      .post(`/api/vehicles/${testVehicle._id}/restock`)
+      .post(`/api/vehicles/${testVehicle.id}/restock`)
       .set("Authorization", adminToken)
       .send({ amount: 3.5 });
 
@@ -411,7 +434,7 @@ describe("POST /api/vehicles/:id/restock", () => {
 
   // ── Test 7: Handle missing vehicle ─────────────────────────────────────────
   test("should return 404 when vehicle does not exist", async () => {
-    const nonExistentId = new (require("mongoose").Types.ObjectId)();
+    const nonExistentId = crypto.randomUUID();
     const res = await request(app)
       .post(`/api/vehicles/${nonExistentId}/restock`)
       .set("Authorization", adminToken)
@@ -441,37 +464,44 @@ describe("PUT /api/vehicles/:id", () => {
   let testVehicle;
 
   beforeEach(async () => {
+    const hashedPassword = await bcrypt.hash("password123", 10);
     // Create an Admin user
-    const admin = await User.create({
-      name: "Admin User",
-      email: "admin.put@example.com",
-      password: "password123",
-      role: "ADMIN",
+    const admin = await prisma.user.create({
+      data: {
+        name: "Admin User",
+        email: "admin.put@example.com",
+        password: hashedPassword,
+        role: "ADMIN",
+      }
     });
-    adminToken = `Bearer ${generateToken(admin._id.toString())}`;
+    adminToken = `Bearer ${generateToken(admin.id)}`;
 
     // Create a regular user
-    const user = await User.create({
-      name: "Regular User",
-      email: "user.put@example.com",
-      password: "password123",
-      role: "USER",
+    const user = await prisma.user.create({
+      data: {
+        name: "Regular User",
+        email: "user.put@example.com",
+        password: hashedPassword,
+        role: "USER",
+      }
     });
-    userToken = `Bearer ${generateToken(user._id.toString())}`;
+    userToken = `Bearer ${generateToken(user.id)}`;
 
     // Seed test vehicle
-    testVehicle = await Vehicle.create({
-      make: "Toyota",
-      model: "Camry",
-      category: "Sedan",
-      price: 25000,
-      quantity: 5,
+    testVehicle = await prisma.vehicle.create({
+      data: {
+        make: "Toyota",
+        model: "Camry",
+        category: "Sedan",
+        price: 25000,
+        quantity: 5,
+      }
     });
   });
 
   test("should update a vehicle successfully when requested by Admin", async () => {
     const res = await request(app)
-      .put(`/api/vehicles/${testVehicle._id}`)
+      .put(`/api/vehicles/${testVehicle.id}`)
       .set("Authorization", adminToken)
       .send({ price: 27000, model: "Camry Hybrid" });
 
@@ -484,7 +514,7 @@ describe("PUT /api/vehicles/:id", () => {
 
   test("should return 403 when a non-admin tries to update a vehicle", async () => {
     const res = await request(app)
-      .put(`/api/vehicles/${testVehicle._id}`)
+      .put(`/api/vehicles/${testVehicle.id}`)
       .set("Authorization", userToken)
       .send({ price: 27000 });
 
@@ -494,7 +524,7 @@ describe("PUT /api/vehicles/:id", () => {
 
   test("should return 401 when no token is provided", async () => {
     const res = await request(app)
-      .put(`/api/vehicles/${testVehicle._id}`)
+      .put(`/api/vehicles/${testVehicle.id}`)
       .send({ price: 27000 });
 
     expect(res.statusCode).toBe(401);
@@ -503,7 +533,7 @@ describe("PUT /api/vehicles/:id", () => {
 
   test("should return 400 validation error when price is negative", async () => {
     const res = await request(app)
-      .put(`/api/vehicles/${testVehicle._id}`)
+      .put(`/api/vehicles/${testVehicle.id}`)
       .set("Authorization", adminToken)
       .send({ price: -100 });
 
@@ -513,7 +543,7 @@ describe("PUT /api/vehicles/:id", () => {
 
   test("should return 400 validation error when quantity is not an integer", async () => {
     const res = await request(app)
-      .put(`/api/vehicles/${testVehicle._id}`)
+      .put(`/api/vehicles/${testVehicle.id}`)
       .set("Authorization", adminToken)
       .send({ quantity: 2.5 });
 
@@ -523,7 +553,7 @@ describe("PUT /api/vehicles/:id", () => {
 
   test("should return 400 validation error when quantity is negative", async () => {
     const res = await request(app)
-      .put(`/api/vehicles/${testVehicle._id}`)
+      .put(`/api/vehicles/${testVehicle.id}`)
       .set("Authorization", adminToken)
       .send({ quantity: -5 });
 
@@ -532,7 +562,7 @@ describe("PUT /api/vehicles/:id", () => {
   });
 
   test("should return 404 when vehicle does not exist", async () => {
-    const nonExistentId = new (require("mongoose").Types.ObjectId)();
+    const nonExistentId = crypto.randomUUID();
     const res = await request(app)
       .put(`/api/vehicles/${nonExistentId}`)
       .set("Authorization", adminToken)
@@ -561,50 +591,59 @@ describe("DELETE /api/vehicles/:id", () => {
   let testVehicle;
 
   beforeEach(async () => {
+    const hashedPassword = await bcrypt.hash("password123", 10);
     // Create an Admin user
-    const admin = await User.create({
-      name: "Admin User",
-      email: "admin.delete@example.com",
-      password: "password123",
-      role: "ADMIN",
+    const admin = await prisma.user.create({
+      data: {
+        name: "Admin User",
+        email: "admin.delete@example.com",
+        password: hashedPassword,
+        role: "ADMIN",
+      }
     });
-    adminToken = `Bearer ${generateToken(admin._id.toString())}`;
+    adminToken = `Bearer ${generateToken(admin.id)}`;
 
     // Create a regular user
-    const user = await User.create({
-      name: "Regular User",
-      email: "user.delete@example.com",
-      password: "password123",
-      role: "USER",
+    const user = await prisma.user.create({
+      data: {
+        name: "Regular User",
+        email: "user.delete@example.com",
+        password: hashedPassword,
+        role: "USER",
+      }
     });
-    userToken = `Bearer ${generateToken(user._id.toString())}`;
+    userToken = `Bearer ${generateToken(user.id)}`;
 
     // Seed test vehicle
-    testVehicle = await Vehicle.create({
-      make: "Toyota",
-      model: "Camry",
-      category: "Sedan",
-      price: 25000,
-      quantity: 5,
+    testVehicle = await prisma.vehicle.create({
+      data: {
+        make: "Toyota",
+        model: "Camry",
+        category: "Sedan",
+        price: 25000,
+        quantity: 5,
+      }
     });
   });
 
   test("should delete a vehicle successfully when requested by Admin", async () => {
     const res = await request(app)
-      .delete(`/api/vehicles/${testVehicle._id}`)
+      .delete(`/api/vehicles/${testVehicle.id}`)
       .set("Authorization", adminToken);
 
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
     
     // Check database to ensure it's deleted
-    const vehicleInDb = await Vehicle.findById(testVehicle._id);
+    const vehicleInDb = await prisma.vehicle.findUnique({
+      where: { id: testVehicle.id }
+    });
     expect(vehicleInDb).toBeNull();
   });
 
   test("should return 403 when a non-admin tries to delete a vehicle", async () => {
     const res = await request(app)
-      .delete(`/api/vehicles/${testVehicle._id}`)
+      .delete(`/api/vehicles/${testVehicle.id}`)
       .set("Authorization", userToken);
 
     expect(res.statusCode).toBe(403);
@@ -613,14 +652,14 @@ describe("DELETE /api/vehicles/:id", () => {
 
   test("should return 401 when no token is provided", async () => {
     const res = await request(app)
-      .delete(`/api/vehicles/${testVehicle._id}`);
+      .delete(`/api/vehicles/${testVehicle.id}`);
 
     expect(res.statusCode).toBe(401);
     expect(res.body.success).toBe(false);
   });
 
   test("should return 404 when vehicle does not exist", async () => {
-    const nonExistentId = new (require("mongoose").Types.ObjectId)();
+    const nonExistentId = crypto.randomUUID();
     const res = await request(app)
       .delete(`/api/vehicles/${nonExistentId}`)
       .set("Authorization", adminToken);
@@ -640,6 +679,3 @@ describe("DELETE /api/vehicles/:id", () => {
     expect(res.body.message).toBe("Invalid vehicle ID format");
   });
 });
-
-
-

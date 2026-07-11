@@ -1,56 +1,91 @@
-const Vehicle = require("../models/Vehicle");
+const prisma = require("../config/db");
+const ApiError = require("../utils/ApiError");
 const { buildVehicleQuery } = require("../utils/queryBuilder");
-const crudHelper = require("../utils/crudHelper");
 
 /**
- * Creates a new vehicle record.
- *
- * @param {{ make: string, model: string, category: string, price: number, quantity: number }} vehicleData
- * @returns {Promise<object>} The created vehicle document
+ * Reusable UUID validator
  */
+const validateUuid = (id, resourceName = "Vehicle") => {
+  if (!id || typeof id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    throw new ApiError(400, `Invalid ${resourceName.toLowerCase()} ID format`);
+  }
+};
+
+/**
+ * Compatibility mapper adding _id for Mongoose backward compatibility
+ */
+const sanitizeVehicle = (vehicle) => {
+  if (!vehicle) return null;
+  return {
+    ...vehicle,
+    _id: vehicle.id,
+  };
+};
+
+const sanitizeVehicles = (vehicles) => {
+  return vehicles.map(sanitizeVehicle);
+};
+
+const getDocumentById = async (Model, id, resourceName = "Vehicle") => {
+  validateUuid(id, resourceName);
+  const document = await prisma.vehicle.findUnique({
+    where: { id },
+  });
+  if (!document) {
+    throw new ApiError(404, `${resourceName} not found`);
+  }
+  return sanitizeVehicle(document);
+};
+
 const createVehicle = async (vehicleData) => {
-  return await crudHelper.createDocument(Vehicle, vehicleData);
+  const vehicle = await prisma.vehicle.create({
+    data: vehicleData,
+  });
+  return sanitizeVehicle(vehicle);
 };
 
-/**
- * Retrieves all vehicles in the inventory.
- *
- * @returns {Promise<Array>} List of all vehicle documents
- */
 const getVehicles = async () => {
-  return await crudHelper.getAllDocuments(Vehicle);
+  const vehicles = await prisma.vehicle.findMany();
+  return sanitizeVehicles(vehicles);
 };
 
-/**
- * Searches and filters vehicles based on input query parameters.
- *
- * @param {object} filters - The search filter fields
- * @returns {Promise<Array>} List of matching vehicle documents
- */
 const searchVehicles = async (filters) => {
   const query = buildVehicleQuery(filters);
-  return await Vehicle.find(query);
+  const vehicles = await prisma.vehicle.findMany({
+    where: query,
+  });
+  return sanitizeVehicles(vehicles);
 };
 
-/**
- * Updates an existing vehicle record.
- *
- * @param {string} id
- * @param {object} updateData
- * @returns {Promise<object>} The updated vehicle document
- */
 const updateVehicle = async (id, updateData) => {
-  return await crudHelper.updateDocument(Vehicle, id, updateData, "Vehicle");
+  validateUuid(id, "Vehicle");
+  const existing = await prisma.vehicle.findUnique({
+    where: { id },
+  });
+  if (!existing) {
+    throw new ApiError(404, "Vehicle not found");
+  }
+
+  const vehicle = await prisma.vehicle.update({
+    where: { id },
+    data: updateData,
+  });
+  return sanitizeVehicle(vehicle);
 };
 
-/**
- * Deletes an existing vehicle record.
- *
- * @param {string} id
- * @returns {Promise<object>} The deleted vehicle document
- */
 const deleteVehicle = async (id) => {
-  return await crudHelper.deleteDocument(Vehicle, id, "Vehicle");
+  validateUuid(id, "Vehicle");
+  const existing = await prisma.vehicle.findUnique({
+    where: { id },
+  });
+  if (!existing) {
+    throw new ApiError(404, "Vehicle not found");
+  }
+
+  const vehicle = await prisma.vehicle.delete({
+    where: { id },
+  });
+  return sanitizeVehicle(vehicle);
 };
 
 module.exports = {
@@ -59,4 +94,5 @@ module.exports = {
   searchVehicles,
   updateVehicle,
   deleteVehicle,
+  getDocumentById,
 };

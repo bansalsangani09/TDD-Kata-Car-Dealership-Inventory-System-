@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 const getJwtConfig = require("../config/jwt");
-const User = require("../models/User");
+const prisma = require("../config/db");
 const ApiError = require("../utils/ApiError");
 const { AUTH_MESSAGES } = require("../constants/auth.constants");
 
@@ -25,12 +25,17 @@ const authMiddleware = async (req, res, next) => {
       throw new ApiError(401, AUTH_MESSAGES.UNAUTHORIZED);
     }
 
-    const user = await User.findById(decoded.id);
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id }
+    });
     if (!user) {
       throw new ApiError(401, AUTH_MESSAGES.UNAUTHORIZED);
     }
 
-    req.user = user;
+    req.user = {
+      ...user,
+      _id: user.id
+    };
     next();
   } catch (err) {
     next(err);

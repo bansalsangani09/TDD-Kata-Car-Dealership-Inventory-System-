@@ -4,28 +4,28 @@
  * Supports price bounds match on price using $gte and $lte.
  *
  * @param {object} filters - The search request query parameters
- * @returns {object} The query filter object for Mongoose
+ * @returns {object} The query filter object for Prisma
  */
 const buildVehicleQuery = ({ make, model, category, minPrice, maxPrice }) => {
   const query = {};
 
   if (make) {
-    query.make = { $regex: new RegExp(make, "i") };
+    query.make = { contains: make, mode: "insensitive" };
   }
   if (model) {
-    query.model = { $regex: new RegExp(model, "i") };
+    query.model = { contains: model, mode: "insensitive" };
   }
   if (category) {
-    query.category = { $regex: new RegExp(category, "i") };
+    query.category = { contains: category, mode: "insensitive" };
   }
 
   if (minPrice || maxPrice) {
     query.price = {};
     if (minPrice) {
-      query.price.$gte = Number(minPrice);
+      query.price.gte = Number(minPrice);
     }
     if (maxPrice) {
-      query.price.$lte = Number(maxPrice);
+      query.price.lte = Number(maxPrice);
     }
   }
 

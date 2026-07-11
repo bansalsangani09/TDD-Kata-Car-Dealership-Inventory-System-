@@ -1,7 +1,12 @@
-const mongoose = require("mongoose");
-const Vehicle = require("../models/Vehicle");
+const prisma = require("../config/db");
 const ApiError = require("../utils/ApiError");
-const crudHelper = require("../utils/crudHelper");
+
+/**
+ * Reusable UUID validator check
+ */
+const isValidUuid = (id) => {
+  return typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+};
 
 /**
  * Purchases a vehicle by decrementing its quantity by 1.
@@ -13,16 +18,33 @@ const crudHelper = require("../utils/crudHelper");
  * @throws {ApiError} 404 if vehicle is not found
  */
 const purchaseVehicle = async (vehicleId) => {
-  const vehicle = await crudHelper.getDocumentById(Vehicle, vehicleId, "Vehicle");
-
-  if (vehicle.quantity <= 0) {
-    throw new ApiError(400, "Vehicle out of stock");
+  if (!isValidUuid(vehicleId)) {
+    throw new ApiError(400, "Invalid vehicle ID format");
   }
 
-  vehicle.quantity -= 1;
-  await vehicle.save();
+  return await prisma.$transaction(async (tx) => {
+    const vehicle = await tx.vehicle.findUnique({
+      where: { id: vehicleId }
+    });
 
-  return vehicle;
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle not found");
+    }
+
+    if (vehicle.quantity <= 0) {
+      throw new ApiError(400, "Vehicle out of stock");
+    }
+
+    const updated = await tx.vehicle.update({
+      where: { id: vehicleId },
+      data: { quantity: vehicle.quantity - 1 }
+    });
+
+    return {
+      ...updated,
+      _id: updated.id
+    };
+  });
 };
 
 /**
@@ -36,17 +58,34 @@ const purchaseVehicle = async (vehicleId) => {
  * @throws {ApiError} 404 if vehicle is not found
  */
 const restockVehicle = async (vehicleId, amount) => {
+  if (!isValidUuid(vehicleId)) {
+    throw new ApiError(400, "Invalid vehicle ID format");
+  }
+
   const parsedAmount = Number(amount);
   if (amount === undefined || isNaN(parsedAmount) || !Number.isInteger(parsedAmount) || parsedAmount <= 0) {
     throw new ApiError(400, "Invalid restock amount");
   }
 
-  const vehicle = await crudHelper.getDocumentById(Vehicle, vehicleId, "Vehicle");
+  return await prisma.$transaction(async (tx) => {
+    const vehicle = await tx.vehicle.findUnique({
+      where: { id: vehicleId }
+    });
 
-  vehicle.quantity += parsedAmount;
-  await vehicle.save();
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle not found");
+    }
 
-  return vehicle;
+    const updated = await tx.vehicle.update({
+      where: { id: vehicleId },
+      data: { quantity: vehicle.quantity + parsedAmount }
+    });
+
+    return {
+      ...updated,
+      _id: updated.id
+    };
+  });
 };
 
 module.exports = {
