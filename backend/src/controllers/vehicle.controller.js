@@ -53,11 +53,23 @@ const createVehicle = async (req, res, next) => {
 };
 
 const updateVehicle = async (req, res, next) => {
-  // TODO: Update an existing vehicle
+  try {
+    const { id } = req.params;
+    const vehicle = await vehicleService.updateVehicle(id, req.body);
+    sendSuccess(res, 200, "Vehicle updated successfully", vehicle);
+  } catch (err) {
+    next(err);
+  }
 };
 
 const deleteVehicle = async (req, res, next) => {
-  // TODO: Delete a vehicle
+  try {
+    const { id } = req.params;
+    await vehicleService.deleteVehicle(id);
+    sendSuccess(res, 200, "Vehicle deleted successfully");
+  } catch (err) {
+    next(err);
+  }
 };
 
 const purchaseVehicle = async (req, res, next) => {

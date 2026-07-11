@@ -435,5 +435,211 @@ describe("POST /api/vehicles/:id/restock", () => {
   });
 });
 
+describe("PUT /api/vehicles/:id", () => {
+  let adminToken;
+  let userToken;
+  let testVehicle;
+
+  beforeEach(async () => {
+    // Create an Admin user
+    const admin = await User.create({
+      name: "Admin User",
+      email: "admin.put@example.com",
+      password: "password123",
+      role: "ADMIN",
+    });
+    adminToken = `Bearer ${generateToken(admin._id.toString())}`;
+
+    // Create a regular user
+    const user = await User.create({
+      name: "Regular User",
+      email: "user.put@example.com",
+      password: "password123",
+      role: "USER",
+    });
+    userToken = `Bearer ${generateToken(user._id.toString())}`;
+
+    // Seed test vehicle
+    testVehicle = await Vehicle.create({
+      make: "Toyota",
+      model: "Camry",
+      category: "Sedan",
+      price: 25000,
+      quantity: 5,
+    });
+  });
+
+  test("should update a vehicle successfully when requested by Admin", async () => {
+    const res = await request(app)
+      .put(`/api/vehicles/${testVehicle._id}`)
+      .set("Authorization", adminToken)
+      .send({ price: 27000, model: "Camry Hybrid" });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.price).toBe(27000);
+    expect(res.body.data.model).toBe("Camry Hybrid");
+    expect(res.body.data.make).toBe("Toyota"); // unchanged
+  });
+
+  test("should return 403 when a non-admin tries to update a vehicle", async () => {
+    const res = await request(app)
+      .put(`/api/vehicles/${testVehicle._id}`)
+      .set("Authorization", userToken)
+      .send({ price: 27000 });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.success).toBe(false);
+  });
+
+  test("should return 401 when no token is provided", async () => {
+    const res = await request(app)
+      .put(`/api/vehicles/${testVehicle._id}`)
+      .send({ price: 27000 });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body.success).toBe(false);
+  });
+
+  test("should return 400 validation error when price is negative", async () => {
+    const res = await request(app)
+      .put(`/api/vehicles/${testVehicle._id}`)
+      .set("Authorization", adminToken)
+      .send({ price: -100 });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  test("should return 400 validation error when quantity is not an integer", async () => {
+    const res = await request(app)
+      .put(`/api/vehicles/${testVehicle._id}`)
+      .set("Authorization", adminToken)
+      .send({ quantity: 2.5 });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  test("should return 400 validation error when quantity is negative", async () => {
+    const res = await request(app)
+      .put(`/api/vehicles/${testVehicle._id}`)
+      .set("Authorization", adminToken)
+      .send({ quantity: -5 });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  test("should return 404 when vehicle does not exist", async () => {
+    const nonExistentId = new (require("mongoose").Types.ObjectId)();
+    const res = await request(app)
+      .put(`/api/vehicles/${nonExistentId}`)
+      .set("Authorization", adminToken)
+      .send({ price: 30000 });
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Vehicle not found");
+  });
+
+  test("should return 400 when vehicle ID format is invalid", async () => {
+    const res = await request(app)
+      .put("/api/vehicles/invalid-id-format")
+      .set("Authorization", adminToken)
+      .send({ price: 30000 });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Invalid vehicle ID format");
+  });
+});
+
+describe("DELETE /api/vehicles/:id", () => {
+  let adminToken;
+  let userToken;
+  let testVehicle;
+
+  beforeEach(async () => {
+    // Create an Admin user
+    const admin = await User.create({
+      name: "Admin User",
+      email: "admin.delete@example.com",
+      password: "password123",
+      role: "ADMIN",
+    });
+    adminToken = `Bearer ${generateToken(admin._id.toString())}`;
+
+    // Create a regular user
+    const user = await User.create({
+      name: "Regular User",
+      email: "user.delete@example.com",
+      password: "password123",
+      role: "USER",
+    });
+    userToken = `Bearer ${generateToken(user._id.toString())}`;
+
+    // Seed test vehicle
+    testVehicle = await Vehicle.create({
+      make: "Toyota",
+      model: "Camry",
+      category: "Sedan",
+      price: 25000,
+      quantity: 5,
+    });
+  });
+
+  test("should delete a vehicle successfully when requested by Admin", async () => {
+    const res = await request(app)
+      .delete(`/api/vehicles/${testVehicle._id}`)
+      .set("Authorization", adminToken);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    
+    // Check database to ensure it's deleted
+    const vehicleInDb = await Vehicle.findById(testVehicle._id);
+    expect(vehicleInDb).toBeNull();
+  });
+
+  test("should return 403 when a non-admin tries to delete a vehicle", async () => {
+    const res = await request(app)
+      .delete(`/api/vehicles/${testVehicle._id}`)
+      .set("Authorization", userToken);
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.success).toBe(false);
+  });
+
+  test("should return 401 when no token is provided", async () => {
+    const res = await request(app)
+      .delete(`/api/vehicles/${testVehicle._id}`);
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body.success).toBe(false);
+  });
+
+  test("should return 404 when vehicle does not exist", async () => {
+    const nonExistentId = new (require("mongoose").Types.ObjectId)();
+    const res = await request(app)
+      .delete(`/api/vehicles/${nonExistentId}`)
+      .set("Authorization", adminToken);
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Vehicle not found");
+  });
+
+  test("should return 400 when vehicle ID format is invalid", async () => {
+    const res = await request(app)
+      .delete("/api/vehicles/invalid-id-format")
+      .set("Authorization", adminToken);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Invalid vehicle ID format");
+  });
+});
+
 
 

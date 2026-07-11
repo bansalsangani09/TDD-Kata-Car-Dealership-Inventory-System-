@@ -5,10 +5,13 @@ const {
   searchVehicles,
   purchaseVehicle,
   restockVehicle,
+  updateVehicle,
+  deleteVehicle,
 } = require("../controllers/vehicle.controller");
 const {
   createVehicleValidation,
   restockVehicleValidation,
+  updateVehicleValidation,
 } = require("../validators/vehicle.validator");
 const authMiddleware = require("../middleware/auth.middleware");
 const adminMiddleware = require("../middleware/admin.middleware");
@@ -28,6 +31,24 @@ router.post(
   createVehicleValidation,
   validate,
   createVehicle
+);
+
+// PUT /api/vehicles/:id - Update vehicle (Admin only)
+router.put(
+  "/:id",
+  authMiddleware,
+  adminMiddleware,
+  updateVehicleValidation,
+  validate,
+  updateVehicle
+);
+
+// DELETE /api/vehicles/:id - Delete vehicle (Admin only)
+router.delete(
+  "/:id",
+  authMiddleware,
+  adminMiddleware,
+  deleteVehicle
 );
 
 // POST /api/vehicles/:id/purchase - Purchase vehicle (Any authenticated user)

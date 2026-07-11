@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Vehicle = require("../models/Vehicle");
 const ApiError = require("../utils/ApiError");
+const crudHelper = require("../utils/crudHelper");
 
 /**
  * Purchases a vehicle by decrementing its quantity by 1.
@@ -12,14 +13,7 @@ const ApiError = require("../utils/ApiError");
  * @throws {ApiError} 404 if vehicle is not found
  */
 const purchaseVehicle = async (vehicleId) => {
-  if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
-    throw new ApiError(400, "Invalid vehicle ID format");
-  }
-
-  const vehicle = await Vehicle.findById(vehicleId);
-  if (!vehicle) {
-    throw new ApiError(404, "Vehicle not found");
-  }
+  const vehicle = await crudHelper.getDocumentById(Vehicle, vehicleId, "Vehicle");
 
   if (vehicle.quantity <= 0) {
     throw new ApiError(400, "Vehicle out of stock");
@@ -42,19 +36,12 @@ const purchaseVehicle = async (vehicleId) => {
  * @throws {ApiError} 404 if vehicle is not found
  */
 const restockVehicle = async (vehicleId, amount) => {
-  if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
-    throw new ApiError(400, "Invalid vehicle ID format");
-  }
-
   const parsedAmount = Number(amount);
   if (amount === undefined || isNaN(parsedAmount) || !Number.isInteger(parsedAmount) || parsedAmount <= 0) {
     throw new ApiError(400, "Invalid restock amount");
   }
 
-  const vehicle = await Vehicle.findById(vehicleId);
-  if (!vehicle) {
-    throw new ApiError(404, "Vehicle not found");
-  }
+  const vehicle = await crudHelper.getDocumentById(Vehicle, vehicleId, "Vehicle");
 
   vehicle.quantity += parsedAmount;
   await vehicle.save();

@@ -1,5 +1,6 @@
 const Vehicle = require("../models/Vehicle");
 const { buildVehicleQuery } = require("../utils/queryBuilder");
+const crudHelper = require("../utils/crudHelper");
 
 /**
  * Creates a new vehicle record.
@@ -8,7 +9,7 @@ const { buildVehicleQuery } = require("../utils/queryBuilder");
  * @returns {Promise<object>} The created vehicle document
  */
 const createVehicle = async (vehicleData) => {
-  return await Vehicle.create(vehicleData);
+  return await crudHelper.createDocument(Vehicle, vehicleData);
 };
 
 /**
@@ -17,7 +18,7 @@ const createVehicle = async (vehicleData) => {
  * @returns {Promise<Array>} List of all vehicle documents
  */
 const getVehicles = async () => {
-  return await Vehicle.find({});
+  return await crudHelper.getAllDocuments(Vehicle);
 };
 
 /**
@@ -31,8 +32,31 @@ const searchVehicles = async (filters) => {
   return await Vehicle.find(query);
 };
 
+/**
+ * Updates an existing vehicle record.
+ *
+ * @param {string} id
+ * @param {object} updateData
+ * @returns {Promise<object>} The updated vehicle document
+ */
+const updateVehicle = async (id, updateData) => {
+  return await crudHelper.updateDocument(Vehicle, id, updateData, "Vehicle");
+};
+
+/**
+ * Deletes an existing vehicle record.
+ *
+ * @param {string} id
+ * @returns {Promise<object>} The deleted vehicle document
+ */
+const deleteVehicle = async (id) => {
+  return await crudHelper.deleteDocument(Vehicle, id, "Vehicle");
+};
+
 module.exports = {
   createVehicle,
   getVehicles,
   searchVehicles,
+  updateVehicle,
+  deleteVehicle,
 };

@@ -30,7 +30,33 @@ const createVehicleValidation = [
 ];
 
 const updateVehicleValidation = [
-  // TODO: Same as createVehicleValidation but all fields optional
+  body("make")
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Make cannot be empty"),
+
+  body("model")
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Model cannot be empty"),
+
+  body("category")
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Category cannot be empty"),
+
+  body("price")
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage("Price must be a number greater than or equal to 0"),
+
+  body("quantity")
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage("Quantity must be an integer greater than or equal to 0"),
 ];
 
 const restockVehicleValidation = [
