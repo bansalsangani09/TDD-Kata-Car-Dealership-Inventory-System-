@@ -4,6 +4,7 @@
  */
 
 const vehicleService = require("../services/vehicle.service");
+const inventoryService = require("../services/inventory.service");
 const { sendSuccess } = require("../utils/response");
 
 const getAllVehicles = async (req, res, next) => {
@@ -59,6 +60,16 @@ const deleteVehicle = async (req, res, next) => {
   // TODO: Delete a vehicle
 };
 
+const purchaseVehicle = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const vehicle = await inventoryService.purchaseVehicle(id);
+    sendSuccess(res, 200, "Vehicle purchased successfully", vehicle);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getAllVehicles,
   searchVehicles,
@@ -66,4 +77,5 @@ module.exports = {
   createVehicle,
   updateVehicle,
   deleteVehicle,
+  purchaseVehicle,
 };

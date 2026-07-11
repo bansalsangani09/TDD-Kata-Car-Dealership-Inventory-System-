@@ -3,6 +3,7 @@ const {
   createVehicle,
   getAllVehicles,
   searchVehicles,
+  purchaseVehicle,
 } = require("../controllers/vehicle.controller");
 const { createVehicleValidation } = require("../validators/vehicle.validator");
 const authMiddleware = require("../middleware/auth.middleware");
@@ -24,5 +25,8 @@ router.post(
   validate,
   createVehicle
 );
+
+// POST /api/vehicles/:id/purchase - Purchase vehicle (Any authenticated user)
+router.post("/:id/purchase", authMiddleware, purchaseVehicle);
 
 module.exports = router;

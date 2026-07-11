@@ -218,3 +218,94 @@ describe("GET /api/vehicles & /api/vehicles/search", () => {
   });
 });
 
+describe("POST /api/vehicles/:id/purchase", () => {
+  let userToken;
+  let testVehicle;
+  let outOfStockVehicle;
+
+  beforeEach(async () => {
+    // Create a regular user
+    const user = await User.create({
+      name: "Buyer User",
+      email: "buyer@example.com",
+      password: "password123",
+      role: "USER",
+    });
+    userToken = `Bearer ${generateToken(user._id.toString())}`;
+
+    // Seed test vehicles
+    testVehicle = await Vehicle.create({
+      make: "Toyota",
+      model: "Camry",
+      category: "Sedan",
+      price: 25000,
+      quantity: 1, // Will become 0 after one purchase
+    });
+
+    outOfStockVehicle = await Vehicle.create({
+      make: "Honda",
+      model: "Civic",
+      category: "Sedan",
+      price: 22000,
+      quantity: 0,
+    });
+  });
+
+  // ── Test 1: Purchase successfully (Quantity decreases by one) ──────────────
+  test("should purchase a vehicle successfully and decrease quantity by one", async () => {
+    const res = await request(app)
+      .post(`/api/vehicles/${testVehicle._id}/purchase`)
+      .set("Authorization", userToken);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data.quantity).toBe(0); // 1 -> 0
+  });
+
+  // ── Test 2: Cannot purchase when quantity is zero ──────────────────────────
+  test("should return 400 when vehicle is out of stock", async () => {
+    const res = await request(app)
+      .post(`/api/vehicles/${outOfStockVehicle._id}/purchase`)
+      .set("Authorization", userToken);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Vehicle out of stock");
+  });
+
+  // ── Test 3: JWT required ───────────────────────────────────────────────────
+  test("should return 401 when no token is provided", async () => {
+    const res = await request(app)
+      .post(`/api/vehicles/${testVehicle._id}/purchase`);
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body.success).toBe(false);
+  });
+
+  // ── Test 4: Handle missing vehicle ─────────────────────────────────────────
+  test("should return 404 when vehicle does not exist", async () => {
+    // Generate a valid ObjectId but one that doesn't exist
+    const nonExistentId = new (require("mongoose").Types.ObjectId)();
+    const res = await request(app)
+      .post(`/api/vehicles/${nonExistentId}/purchase`)
+      .set("Authorization", userToken);
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Vehicle not found");
+  });
+
+  // ── Test 5: Handle invalid vehicle ID format ─────────────────────────────────
+  test("should return 400 when vehicle ID format is invalid", async () => {
+    const res = await request(app)
+      .post("/api/vehicles/invalid-id-format/purchase")
+      .set("Authorization", userToken);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Invalid vehicle ID format");
+  });
+});
+
+
