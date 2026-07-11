@@ -1,6 +1,7 @@
 const request = require("supertest");
 const app = require("../app");
 const User = require("../models/User");
+const Vehicle = require("../models/Vehicle");
 const generateToken = require("../utils/generateToken");
 
 describe("POST /api/vehicles", () => {
@@ -129,3 +130,91 @@ describe("POST /api/vehicles", () => {
     expect(res.body.success).toBe(false);
   });
 });
+
+describe("GET /api/vehicles & /api/vehicles/search", () => {
+  let userToken;
+
+  beforeEach(async () => {
+    // Create a regular user for queries
+    const user = await User.create({
+      name: "Reader User",
+      email: "reader@example.com",
+      password: "password123",
+      role: "USER",
+    });
+    userToken = `Bearer ${generateToken(user._id.toString())}`;
+
+    // Seed test vehicles
+    await Vehicle.create([
+      { make: "Toyota", model: "Camry", category: "Sedan", price: 25000, quantity: 5 },
+      { make: "Honda", model: "Civic", category: "Sedan", price: 22000, quantity: 8 },
+      { make: "Ford", model: "Explorer", category: "SUV", price: 35000, quantity: 3 },
+    ]);
+  });
+
+  // ── GET /api/vehicles ──────────────────────────────────────────────────────
+  test("should get all vehicles in inventory", async () => {
+    const res = await request(app)
+      .get("/api/vehicles")
+      .set("Authorization", userToken);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(3);
+  });
+
+  // ── GET /api/vehicles/search ───────────────────────────────────────────────
+  test("should search and filter by make", async () => {
+    const res = await request(app)
+      .get("/api/vehicles/search?make=Toyota")
+      .set("Authorization", userToken);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].make).toBe("Toyota");
+  });
+
+  test("should search and filter by model", async () => {
+    const res = await request(app)
+      .get("/api/vehicles/search?model=Civic")
+      .set("Authorization", userToken);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].model).toBe("Civic");
+  });
+
+  test("should search and filter by category", async () => {
+    const res = await request(app)
+      .get("/api/vehicles/search?category=Sedan")
+      .set("Authorization", userToken);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(2); // Camry & Civic
+  });
+
+  test("should search and filter by price range", async () => {
+    const res = await request(app)
+      .get("/api/vehicles/search?minPrice=23000&maxPrice=30000")
+      .set("Authorization", userToken);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(1); // Camry (25000)
+    expect(res.body.data[0].model).toBe("Camry");
+  });
+
+  test("should return empty list when no matches are found", async () => {
+    const res = await request(app)
+      .get("/api/vehicles/search?make=BMW")
+      .set("Authorization", userToken);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(0);
+  });
+});
+

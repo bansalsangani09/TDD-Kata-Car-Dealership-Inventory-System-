@@ -7,7 +7,28 @@ const vehicleService = require("../services/vehicle.service");
 const { sendSuccess } = require("../utils/response");
 
 const getAllVehicles = async (req, res, next) => {
-  // TODO: Return all vehicles
+  try {
+    const vehicles = await vehicleService.getVehicles();
+    sendSuccess(res, 200, "Vehicles retrieved successfully", vehicles);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const searchVehicles = async (req, res, next) => {
+  try {
+    const { make, model, category, minPrice, maxPrice } = req.query;
+    const vehicles = await vehicleService.searchVehicles({
+      make,
+      model,
+      category,
+      minPrice,
+      maxPrice,
+    });
+    sendSuccess(res, 200, "Vehicles searched successfully", vehicles);
+  } catch (err) {
+    next(err);
+  }
 };
 
 const getVehicleById = async (req, res, next) => {
@@ -40,6 +61,7 @@ const deleteVehicle = async (req, res, next) => {
 
 module.exports = {
   getAllVehicles,
+  searchVehicles,
   getVehicleById,
   createVehicle,
   updateVehicle,
