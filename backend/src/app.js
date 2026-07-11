@@ -14,7 +14,9 @@ app.get("/", (req, res) => {
 });
 
 // ─── Application Routes ────────────────────────────────────────────────────────
-// TODO: Register application routes here
+const authRoutes = require("./routes/auth.routes");
+
+app.use("/api/auth", authRoutes);
 
 // ─── Global Error Middleware ───────────────────────────────────────────────────
 app.use(errorMiddleware);

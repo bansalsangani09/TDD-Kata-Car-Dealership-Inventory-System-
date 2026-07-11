@@ -1,16 +1,40 @@
-// TODO: Define express-validator rules for auth endpoints
-// - registerValidation: name, email, password
-// - loginValidation: email, password
+const { body } = require("express-validator");
 
+/**
+ * Validation rules for POST /api/auth/register
+ */
 const registerValidation = [
-  // TODO: Validate name (required, string)
-  // TODO: Validate email (required, valid email)
-  // TODO: Validate password (required, min length 6)
+  body("name").trim().notEmpty().withMessage("Name is required"),
+
+  body("email")
+    .trim()
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Must be a valid email address")
+    .normalizeEmail(),
+
+  body("password")
+    .notEmpty()
+    .withMessage("Password is required")
+    .isLength({ min: 6 })
+    .withMessage("Password must be at least 6 characters"),
 ];
 
+/**
+ * Validation rules for POST /api/auth/login
+ * TODO: Implement when building the login feature
+ */
 const loginValidation = [
-  // TODO: Validate email (required, valid email)
-  // TODO: Validate password (required)
+  body("email")
+    .trim()
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Must be a valid email address")
+    .normalizeEmail(),
+
+  body("password").notEmpty().withMessage("Password is required"),
 ];
 
 module.exports = { registerValidation, loginValidation };

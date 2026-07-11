@@ -1,11 +1,15 @@
+const jwt = require("jsonwebtoken");
+const jwtConfig = require("../config/jwt");
+
 /**
- * generateToken
- * TODO: Implement JWT token generation
- * @param {string} userId - The user's MongoDB ObjectId
- * @returns {string} Signed JWT token
+ * Generates a signed JWT token for the given user ID.
+ * @param {string} userId - The user's MongoDB ObjectId as string
+ * @returns {string} Signed JWT
  */
 const generateToken = (userId) => {
-  // TODO: Use jsonwebtoken.sign() with jwtConfig
+  return jwt.sign({ id: userId }, jwtConfig.secret, {
+    expiresIn: jwtConfig.expiresIn,
+  });
 };
 
 module.exports = generateToken;
