@@ -70,6 +70,17 @@ const purchaseVehicle = async (req, res, next) => {
   }
 };
 
+const restockVehicle = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { amount } = req.body;
+    const vehicle = await inventoryService.restockVehicle(id, amount);
+    sendSuccess(res, 200, "Vehicle restocked successfully", vehicle);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getAllVehicles,
   searchVehicles,
@@ -78,4 +89,5 @@ module.exports = {
   updateVehicle,
   deleteVehicle,
   purchaseVehicle,
+  restockVehicle,
 };

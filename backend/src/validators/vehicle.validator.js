@@ -33,4 +33,16 @@ const updateVehicleValidation = [
   // TODO: Same as createVehicleValidation but all fields optional
 ];
 
-module.exports = { createVehicleValidation, updateVehicleValidation };
+const restockVehicleValidation = [
+  body("amount")
+    .notEmpty()
+    .withMessage("Restock amount is required")
+    .isInt({ min: 1 })
+    .withMessage("Restock amount must be an integer greater than 0"),
+];
+
+module.exports = {
+  createVehicleValidation,
+  updateVehicleValidation,
+  restockVehicleValidation,
+};

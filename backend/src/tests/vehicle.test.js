@@ -308,4 +308,132 @@ describe("POST /api/vehicles/:id/purchase", () => {
   });
 });
 
+describe("POST /api/vehicles/:id/restock", () => {
+  let adminToken;
+  let userToken;
+  let testVehicle;
+
+  beforeEach(async () => {
+    // Create an Admin user
+    const admin = await User.create({
+      name: "Admin User",
+      email: "admin.restock@example.com",
+      password: "password123",
+      role: "ADMIN",
+    });
+    adminToken = `Bearer ${generateToken(admin._id.toString())}`;
+
+    // Create a regular user
+    const user = await User.create({
+      name: "Regular User",
+      email: "user.restock@example.com",
+      password: "password123",
+      role: "USER",
+    });
+    userToken = `Bearer ${generateToken(user._id.toString())}`;
+
+    // Seed test vehicle
+    testVehicle = await Vehicle.create({
+      make: "Toyota",
+      model: "Camry",
+      category: "Sedan",
+      price: 25000,
+      quantity: 5,
+    });
+  });
+
+  // ── Test 1: Restock successfully (Admin only) ──────────────────────────────
+  test("should restock a vehicle successfully and increase quantity by amount", async () => {
+    const res = await request(app)
+      .post(`/api/vehicles/${testVehicle._id}/restock`)
+      .set("Authorization", adminToken)
+      .send({ amount: 10 });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data.quantity).toBe(15); // 5 + 10 = 15
+  });
+
+  // ── Test 2: Non-admin trying to restock ────────────────────────────────────
+  test("should return 403 when a non-admin tries to restock", async () => {
+    const res = await request(app)
+      .post(`/api/vehicles/${testVehicle._id}/restock`)
+      .set("Authorization", userToken)
+      .send({ amount: 10 });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.success).toBe(false);
+  });
+
+  // ── Test 3: Unauthorized user (no token) ───────────────────────────────────
+  test("should return 401 when no token is provided", async () => {
+    const res = await request(app)
+      .post(`/api/vehicles/${testVehicle._id}/restock`)
+      .send({ amount: 10 });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body.success).toBe(false);
+  });
+
+  // ── Test 4: Invalid restock amount (missing) ───────────────────────────────
+  test("should return 400 when amount is missing", async () => {
+    const res = await request(app)
+      .post(`/api/vehicles/${testVehicle._id}/restock`)
+      .set("Authorization", adminToken)
+      .send({});
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  // ── Test 5: Invalid restock amount (negative) ──────────────────────────────
+  test("should return 400 when amount is negative", async () => {
+    const res = await request(app)
+      .post(`/api/vehicles/${testVehicle._id}/restock`)
+      .set("Authorization", adminToken)
+      .send({ amount: -5 });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  // ── Test 6: Invalid restock amount (non-integer) ───────────────────────────
+  test("should return 400 when amount is not an integer", async () => {
+    const res = await request(app)
+      .post(`/api/vehicles/${testVehicle._id}/restock`)
+      .set("Authorization", adminToken)
+      .send({ amount: 3.5 });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  // ── Test 7: Handle missing vehicle ─────────────────────────────────────────
+  test("should return 404 when vehicle does not exist", async () => {
+    const nonExistentId = new (require("mongoose").Types.ObjectId)();
+    const res = await request(app)
+      .post(`/api/vehicles/${nonExistentId}/restock`)
+      .set("Authorization", adminToken)
+      .send({ amount: 5 });
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Vehicle not found");
+  });
+
+  // ── Test 8: Handle invalid vehicle ID format ─────────────────────────────────
+  test("should return 400 when vehicle ID format is invalid", async () => {
+    const res = await request(app)
+      .post("/api/vehicles/invalid-id-format/restock")
+      .set("Authorization", adminToken)
+      .send({ amount: 5 });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Invalid vehicle ID format");
+  });
+});
+
+
 

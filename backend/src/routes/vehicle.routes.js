@@ -4,8 +4,12 @@ const {
   getAllVehicles,
   searchVehicles,
   purchaseVehicle,
+  restockVehicle,
 } = require("../controllers/vehicle.controller");
-const { createVehicleValidation } = require("../validators/vehicle.validator");
+const {
+  createVehicleValidation,
+  restockVehicleValidation,
+} = require("../validators/vehicle.validator");
 const authMiddleware = require("../middleware/auth.middleware");
 const adminMiddleware = require("../middleware/admin.middleware");
 const validate = require("../middleware/validate.middleware");
@@ -28,5 +32,15 @@ router.post(
 
 // POST /api/vehicles/:id/purchase - Purchase vehicle (Any authenticated user)
 router.post("/:id/purchase", authMiddleware, purchaseVehicle);
+
+// POST /api/vehicles/:id/restock - Restock vehicle (Admin only)
+router.post(
+  "/:id/restock",
+  authMiddleware,
+  adminMiddleware,
+  restockVehicleValidation,
+  validate,
+  restockVehicle
+);
 
 module.exports = router;

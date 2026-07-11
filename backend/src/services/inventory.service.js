@@ -31,6 +31,38 @@ const purchaseVehicle = async (vehicleId) => {
   return vehicle;
 };
 
+/**
+ * Restocks a vehicle by incrementing its quantity by a specified amount.
+ * Ensures the vehicle exists, has a valid ID format, and restock amount is valid.
+ *
+ * @param {string} vehicleId - The ID of the vehicle to restock
+ * @param {number} amount - The amount to restock (must be an integer > 0)
+ * @returns {Promise<object>} The updated vehicle document
+ * @throws {ApiError} 400 if ID format is invalid or amount is invalid
+ * @throws {ApiError} 404 if vehicle is not found
+ */
+const restockVehicle = async (vehicleId, amount) => {
+  if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
+    throw new ApiError(400, "Invalid vehicle ID format");
+  }
+
+  const parsedAmount = Number(amount);
+  if (amount === undefined || isNaN(parsedAmount) || !Number.isInteger(parsedAmount) || parsedAmount <= 0) {
+    throw new ApiError(400, "Invalid restock amount");
+  }
+
+  const vehicle = await Vehicle.findById(vehicleId);
+  if (!vehicle) {
+    throw new ApiError(404, "Vehicle not found");
+  }
+
+  vehicle.quantity += parsedAmount;
+  await vehicle.save();
+
+  return vehicle;
+};
+
 module.exports = {
   purchaseVehicle,
+  restockVehicle,
 };
