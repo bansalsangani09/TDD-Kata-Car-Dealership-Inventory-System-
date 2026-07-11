@@ -8,9 +8,20 @@ const getJwtConfig = require("../config/jwt");
  * @param {string} userId - MongoDB ObjectId as a string
  * @returns {string} Signed JWT token
  */
-const generateToken = (userId) => {
+const generateToken = (userOrId) => {
   const { secret, expiresIn } = getJwtConfig();
-  return jwt.sign({ id: userId }, secret, { expiresIn });
+  if (userOrId && typeof userOrId === "object") {
+    return jwt.sign(
+      {
+        id: userOrId.id || userOrId._id,
+        email: userOrId.email,
+        role: userOrId.role,
+      },
+      secret,
+      { expiresIn }
+    );
+  }
+  return jwt.sign({ id: userOrId }, secret, { expiresIn });
 };
 
 module.exports = generateToken;

@@ -42,7 +42,7 @@ const registerUser = async ({ name, email, password }) => {
   });
 
   const sanitized = sanitizeUser(user);
-  const token = generateToken(sanitized.id);
+  const token = generateToken(sanitized);
 
   return { user: sanitized, token };
 };
@@ -68,7 +68,7 @@ const loginUser = async ({ email, password }) => {
   }
 
   const sanitized = sanitizeUser(user);
-  const token = generateToken(sanitized.id);
+  const token = generateToken(sanitized);
 
   return { user: sanitized, token };
 };

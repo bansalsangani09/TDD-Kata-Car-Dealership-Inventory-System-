@@ -16,7 +16,7 @@ const AUTH_MESSAGES = Object.freeze({
   EMAIL_EXISTS: "Email already exists",
   INVALID_CREDENTIALS: "Invalid email or password",
   UNAUTHORIZED: "Not authorized, no token provided",
-  FORBIDDEN: "Access denied: insufficient permissions",
+  FORBIDDEN: "Admin access required",
 });
 
 module.exports = { ROLES, AUTH_MESSAGES };

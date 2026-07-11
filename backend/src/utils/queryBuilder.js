@@ -1,35 +1,68 @@
 /**
- * Builds a MongoDB query filter object for vehicle searches.
- * Supports partial case-insensitive regex match on fields: make, model, category.
- * Supports price bounds match on price using $gte and $lte.
+ * Builds a query filter object for vehicle searches.
+ * Supports partial case-insensitive match on fields.
+ * Supports price bounds.
  *
  * @param {object} filters - The search request query parameters
  * @returns {object} The query filter object for Prisma
  */
 const buildVehicleQuery = ({ make, model, category, minPrice, maxPrice }) => {
-  const query = {};
+  const conditions = [];
 
-  if (make) {
-    query.make = { contains: make, mode: "insensitive" };
+  // When search bar sets both make and model to the search query, do OR search
+  if (make && model && make === model) {
+    conditions.push({
+      OR: [
+        { make: { contains: make, mode: "insensitive" } },
+        { model: { contains: model, mode: "insensitive" } },
+        { category: { contains: make, mode: "insensitive" } },
+      ],
+    });
+  } else {
+    if (make) {
+      conditions.push({ make: { contains: make, mode: "insensitive" } });
+    }
+    if (model) {
+      conditions.push({ model: { contains: model, mode: "insensitive" } });
+    }
   }
-  if (model) {
-    query.model = { contains: model, mode: "insensitive" };
-  }
+
   if (category) {
-    query.category = { contains: category, mode: "insensitive" };
+    let categoryList = [];
+    if (Array.isArray(category)) {
+      categoryList = category;
+    } else if (typeof category === "string") {
+      categoryList = category.split(",").map((c) => c.trim()).filter(Boolean);
+    }
+
+    if (categoryList.length > 0) {
+      conditions.push({
+        category: {
+          in: categoryList,
+          mode: "insensitive",
+        },
+      });
+    }
   }
 
   if (minPrice || maxPrice) {
-    query.price = {};
+    const priceCond = {};
     if (minPrice) {
-      query.price.gte = Number(minPrice);
+      priceCond.gte = Number(minPrice);
     }
     if (maxPrice) {
-      query.price.lte = Number(maxPrice);
+      priceCond.lte = Number(maxPrice);
     }
+    conditions.push({ price: priceCond });
   }
 
-  return query;
+  if (conditions.length === 0) {
+    return {};
+  }
+
+  return {
+    AND: conditions,
+  };
 };
 
 module.exports = { buildVehicleQuery };

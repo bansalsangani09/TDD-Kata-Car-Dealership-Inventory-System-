@@ -206,6 +206,26 @@ describe("GET /api/vehicles & /api/vehicles/search", () => {
     expect(res.body.data).toHaveLength(2); // Camry & Civic
   });
 
+  test("should search and filter by multiple categories (comma-separated)", async () => {
+    const res = await request(app)
+      .get("/api/vehicles/search?category=Sedan,SUV")
+      .set("Authorization", userToken);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(3); // Camry, Civic & Explorer
+  });
+
+  test("should search and filter by multiple categories (array)", async () => {
+    const res = await request(app)
+      .get("/api/vehicles/search?category=Sedan&category=SUV")
+      .set("Authorization", userToken);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(3); // Camry, Civic & Explorer
+  });
+
   test("should search and filter by price range", async () => {
     const res = await request(app)
       .get("/api/vehicles/search?minPrice=23000&maxPrice=30000")
