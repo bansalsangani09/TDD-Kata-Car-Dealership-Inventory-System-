@@ -1,28 +1,30 @@
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 const ApiError = require("../utils/ApiError");
+const { AUTH_MESSAGES } = require("../constants/auth.constants");
 
 /**
- * Registers a new user.
+ * Registers a new user account.
+ *
+ * Responsibilities (Single Responsibility):
+ *   1. Guard against duplicate email
+ *   2. Persist the user (password hashing delegated to the User pre-save hook)
+ *   3. Issue a JWT
+ *   4. Return a sanitized user payload (password omitted via toJSON transform)
  *
  * @param {{ name: string, email: string, password: string }} data
  * @returns {{ user: object, token: string }}
- * @throws {ApiError} 400 if the email is already in use
+ * @throws {ApiError} HTTP 400 when the email is already registered
  */
 const registerUser = async ({ name, email, password }) => {
-  // Guard: duplicate email
   const existing = await User.findOne({ email: email.toLowerCase() });
   if (existing) {
-    throw new ApiError(400, "Email already exists");
+    throw new ApiError(400, AUTH_MESSAGES.EMAIL_EXISTS);
   }
 
-  // Persist — password hashing is handled by the pre-save hook in User model
   const user = await User.create({ name, email, password });
-
-  // Generate JWT
   const token = generateToken(user._id.toString());
 
-  // user.toJSON() automatically strips the password field
   return { user: user.toJSON(), token };
 };
 

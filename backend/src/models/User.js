@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
+const { ROLES } = require("../constants/auth.constants");
 
 const SALT_ROUNDS = 10;
 
@@ -24,8 +25,8 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["USER", "ADMIN"],
-      default: "USER",
+      enum: Object.values(ROLES),
+      default: ROLES.USER,
     },
   },
   { timestamps: true }
@@ -33,18 +34,18 @@ const userSchema = new mongoose.Schema(
 
 // ─── Pre-save hook: hash password before persisting ───────────────────────────
 userSchema.pre("save", async function (next) {
-  // Only re-hash if the password field was modified
+  // Only re-hash when the password field has actually changed
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, SALT_ROUNDS);
   next();
 });
 
-// ─── Instance method: compare plain password to hash ─────────────────────────
+// ─── Instance method: verify a candidate password against the stored hash ──────
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// ─── Transform: strip password from all JSON output ──────────────────────────
+// ─── toJSON transform: strip password from all serialised output ──────────────
 userSchema.set("toJSON", {
   transform: (_doc, ret) => {
     delete ret.password;
