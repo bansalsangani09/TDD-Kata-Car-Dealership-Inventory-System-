@@ -1,4 +1,4 @@
-const { registerUser } = require("../services/auth.service");
+const { registerUser, loginUser } = require("../services/auth.service");
 const { sendSuccess } = require("../utils/response");
 const { AUTH_MESSAGES } = require("../constants/auth.constants");
 
@@ -21,8 +21,23 @@ const register = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/auth/login
+ *
+ * HTTP layer only — no business logic.
+ * 1. Receives validated request body
+ * 2. Delegates to auth.service.loginUser
+ * 3. Sends a 200 success response
+ * 4. Forwards errors to error middleware
+ */
 const login = async (req, res, next) => {
-  // TODO: Implement in the login feature prompt
+  try {
+    const { email, password } = req.body;
+    const { user, token } = await loginUser({ email, password });
+    sendSuccess(res, 200, AUTH_MESSAGES.LOGIN_SUCCESS, { user, token });
+  } catch (err) {
+    next(err);
+  }
 };
 
 const logout = async (req, res, next) => {

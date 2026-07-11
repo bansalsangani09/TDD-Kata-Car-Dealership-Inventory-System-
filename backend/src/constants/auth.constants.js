@@ -12,6 +12,7 @@ const ROLES = Object.freeze({
 // ─── Auth Messages ─────────────────────────────────────────────────────────────
 const AUTH_MESSAGES = Object.freeze({
   REGISTER_SUCCESS: "User registered successfully",
+  LOGIN_SUCCESS: "User logged in successfully",
   EMAIL_EXISTS: "Email already exists",
   INVALID_CREDENTIALS: "Invalid email or password",
   UNAUTHORIZED: "Not authorized, no token provided",
