@@ -3,6 +3,9 @@
  * TODO: Implement CRUD handlers for vehicle resource
  */
 
+const vehicleService = require("../services/vehicle.service");
+const { sendSuccess } = require("../utils/response");
+
 const getAllVehicles = async (req, res, next) => {
   // TODO: Return all vehicles
 };
@@ -12,7 +15,19 @@ const getVehicleById = async (req, res, next) => {
 };
 
 const createVehicle = async (req, res, next) => {
-  // TODO: Create a new vehicle
+  try {
+    const { make, model, category, price, quantity } = req.body;
+    const vehicle = await vehicleService.createVehicle({
+      make,
+      model,
+      category,
+      price,
+      quantity,
+    });
+    sendSuccess(res, 201, "Vehicle created successfully", vehicle);
+  } catch (err) {
+    next(err);
+  }
 };
 
 const updateVehicle = async (req, res, next) => {

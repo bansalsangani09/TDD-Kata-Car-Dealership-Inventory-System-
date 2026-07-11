@@ -1,14 +1,40 @@
+const jwt = require("jsonwebtoken");
+const getJwtConfig = require("../config/jwt");
+const User = require("../models/User");
+const ApiError = require("../utils/ApiError");
+const { AUTH_MESSAGES } = require("../constants/auth.constants");
+
 /**
  * Auth Middleware
- * TODO: Implement JWT token verification
- * - Verify Authorization header
- * - Decode and validate JWT
- * - Attach user to req.user
+ * Verifies Authorization bearer token, decodes JWT, fetches user, and attaches to req.user.
  */
+const authMiddleware = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new ApiError(401, AUTH_MESSAGES.UNAUTHORIZED);
+    }
 
-const authMiddleware = (req, res, next) => {
-  // TODO: Implement authentication check
-  next();
+    const token = authHeader.split(" ")[1];
+    const { secret } = getJwtConfig();
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, secret);
+    } catch (err) {
+      throw new ApiError(401, AUTH_MESSAGES.UNAUTHORIZED);
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      throw new ApiError(401, AUTH_MESSAGES.UNAUTHORIZED);
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    next(err);
+  }
 };
 
 module.exports = authMiddleware;

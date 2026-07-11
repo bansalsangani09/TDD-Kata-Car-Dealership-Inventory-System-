@@ -15,8 +15,10 @@ app.get("/", (req, res) => {
 
 // ─── Application Routes ────────────────────────────────────────────────────────
 const authRoutes = require("./routes/auth.routes");
+const vehicleRoutes = require("./routes/vehicle.routes");
 
 app.use("/api/auth", authRoutes);
+app.use("/api/vehicles", vehicleRoutes);
 
 // ─── Global Error Middleware ───────────────────────────────────────────────────
 app.use(errorMiddleware);

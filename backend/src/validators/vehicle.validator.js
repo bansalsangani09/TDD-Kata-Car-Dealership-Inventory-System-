@@ -1,14 +1,32 @@
-// TODO: Define express-validator rules for vehicle endpoints
-// - createVehicleValidation: make, model, year, vin, price, mileage, color, stock
-// - updateVehicleValidation: same fields but optional
+const { body } = require("express-validator");
 
 const createVehicleValidation = [
-  // TODO: Validate make (required, string)
-  // TODO: Validate model (required, string)
-  // TODO: Validate year (required, integer, range 1900–current year)
-  // TODO: Validate vin (required, unique string)
-  // TODO: Validate price (required, positive number)
-  // TODO: Validate stock (required, non-negative integer)
+  body("make")
+    .trim()
+    .notEmpty()
+    .withMessage("Make is required"),
+
+  body("model")
+    .trim()
+    .notEmpty()
+    .withMessage("Model is required"),
+
+  body("category")
+    .trim()
+    .notEmpty()
+    .withMessage("Category is required"),
+
+  body("price")
+    .notEmpty()
+    .withMessage("Price is required")
+    .isFloat({ min: 0 })
+    .withMessage("Price must be a number greater than or equal to 0"),
+
+  body("quantity")
+    .notEmpty()
+    .withMessage("Quantity is required")
+    .isInt({ min: 0 })
+    .withMessage("Quantity must be an integer greater than or equal to 0"),
 ];
 
 const updateVehicleValidation = [

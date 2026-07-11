@@ -1,11 +1,15 @@
-/**
- * Vehicle Service
- * TODO: Implement business logic for vehicle resource
- * - fetchAllVehicles(filters)
- * - fetchVehicleById(id)
- * - createVehicle(data)
- * - updateVehicle(id, data)
- * - deleteVehicle(id)
- */
+const Vehicle = require("../models/Vehicle");
 
-module.exports = {};
+/**
+ * Creates a new vehicle record.
+ *
+ * @param {{ make: string, model: string, category: string, price: number, quantity: number }} vehicleData
+ * @returns {Promise<object>} The created vehicle document
+ */
+const createVehicle = async (vehicleData) => {
+  return await Vehicle.create(vehicleData);
+};
+
+module.exports = {
+  createVehicle,
+};

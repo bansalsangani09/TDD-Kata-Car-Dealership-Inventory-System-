@@ -1,12 +1,14 @@
+const ApiError = require("../utils/ApiError");
+const { AUTH_MESSAGES, ROLES } = require("../constants/auth.constants");
+
 /**
  * Admin Middleware
- * TODO: Implement role-based access control
- * - Check req.user.role === 'admin'
- * - Return 403 if not authorized
+ * Restricts access to Admin role users only. Must be mounted after authMiddleware.
  */
-
 const adminMiddleware = (req, res, next) => {
-  // TODO: Implement admin role check
+  if (!req.user || req.user.role !== ROLES.ADMIN) {
+    return next(new ApiError(403, AUTH_MESSAGES.FORBIDDEN));
+  }
   next();
 };
 

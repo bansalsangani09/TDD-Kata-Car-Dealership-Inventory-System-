@@ -1,9 +1,39 @@
 const mongoose = require("mongoose");
 
-// TODO: Define Vehicle schema
-// Fields to include: make, model, year, vin, price, mileage, color, status, stock, createdAt, updatedAt
-
-const vehicleSchema = new mongoose.Schema({}, { timestamps: true });
+const vehicleSchema = new mongoose.Schema(
+  {
+    make: {
+      type: String,
+      required: [true, "Make is required"],
+      trim: true,
+    },
+    model: {
+      type: String,
+      required: [true, "Model is required"],
+      trim: true,
+    },
+    category: {
+      type: String,
+      required: [true, "Category is required"],
+      trim: true,
+    },
+    price: {
+      type: Number,
+      required: [true, "Price is required"],
+      min: [0, "Price cannot be negative"],
+    },
+    quantity: {
+      type: Number,
+      required: [true, "Quantity is required"],
+      min: [0, "Quantity cannot be negative"],
+      validate: {
+        validator: Number.isInteger,
+        message: "{VALUE} is not an integer value",
+      },
+    },
+  },
+  { timestamps: true }
+);
 
 const Vehicle = mongoose.model("Vehicle", vehicleSchema);
 
